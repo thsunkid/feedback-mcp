@@ -59,7 +59,7 @@ async function invokeCursorAgent({ argv, output_format = 'text', cwd, executable
    ...(print ? ['--print', '--output-format', output_format] : []),
    ...userArgs,
    ...(hasForceFlag || !effectiveForce ? [] : ['-f']),
-   ...(hasModelFlag || !effectiveModel ? [] : ['-m', effectiveModel]),
+   ...(hasModelFlag || !effectiveModel ? [] : ['--model', effectiveModel]),
  ];
 
  return new Promise((resolve) => {
@@ -701,7 +701,7 @@ server.tool(
 
 server.tool(
   'cursor_agent_session_reply',
-  'Send an answer to cursor-agent\'s pending question within an active session. Continues the conversation.',
+  'Send a reply to cursor-agent within a session. Works when agent is waiting for an answer OR when you want to give feedback on a completed result (re-opens the session for another round).',
   SESSION_REPLY_SCHEMA.shape,
   async (args) => {
     try {
@@ -712,11 +712,17 @@ server.tool(
           isError: true,
         };
       }
-      if (session.status !== 'waiting_for_answer') {
+      if (session.status !== 'waiting_for_answer' && session.status !== 'completed') {
         return {
-          content: [{ type: 'text', text: `Session "${args.session_id}" is not waiting for an answer. Current status: ${session.status}` }],
+          content: [{ type: 'text', text: `Session "${args.session_id}" cannot accept a reply. Current status: ${session.status}` }],
           isError: true,
         };
+      }
+
+      // Re-open a completed session for feedback/follow-up
+      if (session.status === 'completed') {
+        session.status = 'active';
+        session.result = null;
       }
 
       session.history.push({ role: 'user', content: args.reply });

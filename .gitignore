@@ -13,7 +13,11 @@ venv*/
 # Logs
 *.log
 
+# Node
+node_modules/
+
 #Others
 .DS_Store
+*.skill
 
 .cursor/rules/
